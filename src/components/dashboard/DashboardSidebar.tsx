@@ -15,7 +15,9 @@ interface DashboardSidebarProps {
 }
 
 const DashboardSidebar = ({ currentTab, setCurrentTab }: DashboardSidebarProps) => {
-  const { collapsed } = useSidebar();
+  // Update to use the state property instead of collapsed which doesn't exist
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
 
   const menuItems = [
     { id: "clients", label: "Clients", icon: Users },
