@@ -10,6 +10,8 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import ClientProgress from "./pages/ClientProgress";
+import ServicesSection from "./components/dashboard/ServicesSection";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +33,7 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            <Route path="/client/:clientId" element={<ClientProgress />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
