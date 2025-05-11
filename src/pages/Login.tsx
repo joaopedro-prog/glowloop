@@ -5,44 +5,62 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Login = () => {
+  // Login state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
-  const { toast } = useToast();
+  
+  // Register state
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState("");
+  const [registerName, setRegisterName] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       const success = await login(email, password);
       if (success) {
-        toast({
-          title: "Login successful",
-          description: "Welcome back!",
-        });
         navigate("/dashboard");
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Please check your credentials and try again. (Hint: password is 'password')",
-          variant: "destructive",
-        });
       }
-    } catch (error) {
-      toast({
-        title: "An error occurred",
-        description: "Please try again later",
-        variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (registerPassword !== registerConfirmPassword) {
+      toast.error("As senhas não coincidem");
+      return;
+    }
+
+    if (registerPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
+    setIsRegistering(true);
+    
+    try {
+      const success = await register(registerEmail, registerPassword, registerName);
+      if (success) {
+        toast.success("Conta criada com sucesso! Por favor, verifique seu e-mail para confirmar.");
+      }
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -55,50 +73,118 @@ const Login = () => {
               GlowLoop
             </span>
           </div>
-          <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
+          <CardTitle className="text-2xl text-center">Bem-vindo</CardTitle>
           <CardDescription className="text-center">
-            Enter your credentials to access your dashboard
+            Entre ou crie uma conta para acessar seu painel
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <a href="#" className="text-sm text-glow-pink hover:underline">
-                  Forgot password?
-                </a>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-glow-pink to-aqua-suave hover:opacity-90 transition-opacity"
-              disabled={isLoading}
-            >
-              {isLoading ? "Signing in..." : "Sign In"}
-            </Button>
-          </CardFooter>
-        </form>
+
+        <Tabs defaultValue="login" className="px-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="register">Cadastro</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="login">
+            <form onSubmit={handleLogin}>
+              <CardContent className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Senha</Label>
+                    <a href="#" className="text-sm text-glow-pink hover:underline">
+                      Esqueceu a senha?
+                    </a>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-glow-pink to-aqua-suave hover:opacity-90 transition-opacity"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Entrando..." : "Entrar"}
+                </Button>
+              </CardFooter>
+            </form>
+          </TabsContent>
+          
+          <TabsContent value="register">
+            <form onSubmit={handleRegister}>
+              <CardContent className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="register-name">Nome</Label>
+                  <Input
+                    id="register-name"
+                    type="text"
+                    placeholder="Seu nome"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-email">Email</Label>
+                  <Input
+                    id="register-email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Senha</Label>
+                  <Input
+                    id="register-password"
+                    type="password"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-confirm-password">Confirmar Senha</Label>
+                  <Input
+                    id="register-confirm-password"
+                    type="password"
+                    value={registerConfirmPassword}
+                    onChange={(e) => setRegisterConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-glow-pink to-aqua-suave hover:opacity-90 transition-opacity"
+                  disabled={isRegistering}
+                >
+                  {isRegistering ? "Cadastrando..." : "Cadastrar"}
+                </Button>
+              </CardFooter>
+            </form>
+          </TabsContent>
+        </Tabs>
       </Card>
     </div>
   );

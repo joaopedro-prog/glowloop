@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -11,7 +11,6 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import ClientProgress from "./pages/ClientProgress";
-import ServicesSection from "./components/dashboard/ServicesSection";
 
 const queryClient = new QueryClient();
 
@@ -33,7 +32,16 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route path="/client/:clientId" element={<ClientProgress />} />
+            <Route 
+              path="/client/:clientId" 
+              element={
+                <ProtectedRoute>
+                  <ClientProgress />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Redirecionar /dashboard/X para /dashboard?tab=X */}
+            <Route path="/dashboard/:tab" element={<Navigate to="/dashboard" replace />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

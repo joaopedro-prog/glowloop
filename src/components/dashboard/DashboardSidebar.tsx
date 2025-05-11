@@ -1,5 +1,5 @@
 
-import { Users, CalendarDays, List, FileText, ChartBar } from "lucide-react";
+import { Users, CalendarDays, List, FileText, ChartBar, Home, LayoutGrid } from "lucide-react";
 import { 
   Sidebar, 
   SidebarContent, 
@@ -20,11 +20,13 @@ const DashboardSidebar = ({ currentTab, setCurrentTab }: DashboardSidebarProps) 
   const collapsed = state === "collapsed";
 
   const menuItems = [
-    { id: "clients", label: "Clients", icon: Users },
-    { id: "visits", label: "Visits", icon: CalendarDays },
-    { id: "loyalty", label: "Loyalty Programs", icon: List },
-    { id: "rewards", label: "Rewards", icon: FileText },
-    { id: "reports", label: "Reports", icon: ChartBar },
+    { id: "overview", label: "Visão Geral", icon: Home },
+    { id: "clients", label: "Clientes", icon: Users },
+    { id: "visits", label: "Visitas", icon: CalendarDays },
+    { id: "services", label: "Serviços", icon: LayoutGrid },
+    { id: "loyalty", label: "Fidelidade", icon: List },
+    { id: "rewards", label: "Recompensas", icon: FileText },
+    { id: "reports", label: "Relatórios", icon: ChartBar },
   ];
 
   return (
