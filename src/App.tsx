@@ -42,6 +42,8 @@ const App = () => (
             />
             {/* Redirecionar /dashboard/X para /dashboard?tab=X */}
             <Route path="/dashboard/:tab" element={<Navigate to="/dashboard" replace />} />
+            {/* Rota para registro de usuários */}
+            <Route path="/register" element={<Navigate to="/login" replace />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
