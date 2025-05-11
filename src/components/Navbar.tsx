@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -73,6 +74,11 @@ const Navbar = () => {
                   Dashboard
                 </Button>
               </Link>
+              <div className="flex items-center gap-1">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-aqua-suave text-indigo-dark">JP</AvatarFallback>
+                </Avatar>
+              </div>
               <Button onClick={handleLogout} variant="ghost">
                 Logout
               </Button>
