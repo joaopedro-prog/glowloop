@@ -9,6 +9,30 @@ import { toast } from "sonner";
 import { formatDistance, subMonths, startOfMonth, parseISO, isAfter, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+// Define type for client visits
+interface ClientVisit {
+  id: string;
+  client_id: string;
+  service_id: string | null;
+  visit_date: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  notes: string | null;
+}
+
+// Define type for client rewards
+interface ClientReward {
+  id: string;
+  client_id: string;
+  program_id: string;
+  user_id: string;
+  points: number | null;
+  visits: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 const ReportsSection = () => {
   const { user } = useAuth();
   const [visitData, setVisitData] = useState<any[]>([]);
@@ -50,7 +74,7 @@ const ReportsSection = () => {
         const { data: visits, error: visitsError } = await supabase
           .from("client_visits")
           .select("*")
-          .eq("user_id", user.id);
+          .eq("user_id", user.id) as { data: ClientVisit[] | null, error: any };
           
         if (visitsError) throw visitsError;
         
@@ -89,7 +113,7 @@ const ReportsSection = () => {
         const { data: rewards, error: rewardsError } = await supabase
           .from("client_rewards")
           .select("*")
-          .eq("user_id", user.id);
+          .eq("user_id", user.id) as { data: ClientReward[] | null, error: any };
           
         if (rewardsError) throw rewardsError;
         

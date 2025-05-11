@@ -17,10 +17,13 @@ import { useAuth } from "@/contexts/AuthContext";
 interface Service {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   price: number;
   duration: number;
   category: string;
+  created_at?: string; 
+  updated_at?: string;
+  user_id?: string;
 }
 
 const categories = ["Facial", "Unhas", "Cabelo", "Corpo", "Massagem", "Maquiagem", "Outro"];
@@ -56,7 +59,7 @@ const ServicesSection = () => {
           .from("services")
           .select("*")
           .eq("user_id", user.id)
-          .order("name");
+          .order("name") as { data: Service[] | null, error: any };
           
         if (error) throw error;
         
@@ -76,7 +79,7 @@ const ServicesSection = () => {
     setEditingService(service);
     form.reset({
       name: service.name,
-      description: service.description,
+      description: service.description || "",
       price: service.price,
       duration: service.duration,
       category: service.category,
@@ -118,7 +121,7 @@ const ServicesSection = () => {
         if (error) throw error;
         
         setServices(services.map(s => 
-          s.id === editingService.id ? { ...s, ...data } : s
+          s.id === editingService.id ? { ...s, ...data } as Service : s
         ));
         
         toast.success("Serviço atualizado", {
@@ -138,12 +141,13 @@ const ServicesSection = () => {
               category: data.category
             }
           ])
-          .select()
-          .single();
+          .select() as { data: Service[] | null, error: any };
           
         if (error) throw error;
         
-        setServices([...services, newService]);
+        if (newService && newService.length > 0) {
+          setServices([...services, newService[0]]);
+        }
         
         toast.success("Serviço adicionado", {
           description: `${data.name} foi adicionado com sucesso.`,

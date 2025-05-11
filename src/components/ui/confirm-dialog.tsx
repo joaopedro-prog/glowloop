@@ -43,7 +43,10 @@ export function ConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>{cancelText}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
             className={destructive ? "bg-destructive hover:bg-destructive/90" : ""}
             disabled={loading}
           >
