@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Visit {
   id: string;
@@ -30,7 +30,7 @@ const mockVisits: Visit[] = [
     clientName: "Emma Johnson",
     date: new Date(2023, 9, 15),
     service: "Full Hair Treatment",
-    value: 120.00
+    value: 120.0,
   },
   {
     id: "2",
@@ -38,7 +38,7 @@ const mockVisits: Visit[] = [
     clientName: "Emma Johnson",
     date: new Date(2023, 9, 2),
     service: "Manicure",
-    value: 45.00
+    value: 45.0,
   },
   {
     id: "3",
@@ -46,14 +46,8 @@ const mockVisits: Visit[] = [
     clientName: "Sophia Martinez",
     date: new Date(2023, 9, 10),
     service: "Facial",
-    value: 85.00
+    value: 85.0,
   },
-];
-
-const mockClients = [
-  { id: "1", name: "Emma Johnson" },
-  { id: "2", name: "Sophia Martinez" },
-  { id: "3", name: "Daniel Wilson" },
 ];
 
 const services = [
@@ -64,14 +58,15 @@ const services = [
   "Facial",
   "Manicure",
   "Pedicure",
-  "Full Spa Package"
+  "Full Spa Package",
 ];
 
 const VisitsSection = () => {
   const [visits, setVisits] = useState<Visit[]>(mockVisits);
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
-  
+
   const form = useForm({
     defaultValues: {
       clientId: "",
@@ -81,34 +76,46 @@ const VisitsSection = () => {
     },
   });
 
+  useEffect(() => {
+    const fetchClients = async () => {
+      const { data, error } = await supabase.from("clients").select("id, name");
+      if (error) {
+        console.error("Erro ao buscar clientes:", error);
+      } else {
+        setClients(data || []);
+      }
+    };
+
+    fetchClients();
+  }, []);
+
   const filteredVisits = visits.filter((visit) =>
     visit.clientName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddVisit = (data: any) => {
-    const client = mockClients.find(c => c.id === data.clientId);
-    
-    if (!client) return;
-    
-    const newVisit = {
-      id: (visits.length + 1).toString(),
-      clientId: data.clientId,
-      clientName: client.name,
-      date: data.date,
-      service: data.service,
-      value: data.value
+    const handleAddVisit = (data: any) => {
+      const client = clients.find((c) => c.id === data.clientId);
+      if (!client) return;
+
+      const newVisit = {
+        id: (visits.length + 1).toString(),
+        clientId: data.clientId,
+        clientName: client.name,
+        date: data.date,
+        service: data.service,
+        value: data.value,
+      };
+
+      setVisits([...visits, newVisit]);
+      setOpenDialog(false);
+      form.reset();
     };
-    
-    setVisits([...visits, newVisit]);
-    setOpenDialog(false);
-    form.reset();
-  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Visits / Consultations</h2>
-        
+
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -119,7 +126,7 @@ const VisitsSection = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
+
           <Dialog open={openDialog} onOpenChange={setOpenDialog}>
             <DialogTrigger asChild>
               <Button className="bg-glow-gradient hover:opacity-90">
@@ -131,7 +138,7 @@ const VisitsSection = () => {
               <DialogHeader>
                 <DialogTitle>Register New Visit</DialogTitle>
               </DialogHeader>
-              
+
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleAddVisit)} className="space-y-4">
                   <FormField
@@ -140,17 +147,14 @@ const VisitsSection = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Client</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select client" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {mockClients.map(client => (
+                            {clients.map((client) => (
                               <SelectItem key={client.id} value={client.id}>
                                 {client.name}
                               </SelectItem>
@@ -160,7 +164,7 @@ const VisitsSection = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="date"
@@ -177,11 +181,7 @@ const VisitsSection = () => {
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
+                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                 <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
@@ -199,24 +199,21 @@ const VisitsSection = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="service"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Service</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select service" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {services.map(service => (
+                            {services.map((service) => (
                               <SelectItem key={service} value={service}>
                                 {service}
                               </SelectItem>
@@ -226,7 +223,7 @@ const VisitsSection = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="value"
@@ -234,20 +231,18 @@ const VisitsSection = () => {
                       <FormItem>
                         <FormLabel>Value ($)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0.00" 
-                            {...field} 
-                            onChange={e => field.onChange(parseFloat(e.target.value))}
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
                           />
                         </FormControl>
-                        <FormDescription>
-                          This will automatically apply loyalty rules.
-                        </FormDescription>
+                        <FormDescription>This will automatically apply loyalty rules.</FormDescription>
                       </FormItem>
                     )}
                   />
-                  
+
                   <Button type="submit" className="w-full bg-glow-gradient hover:opacity-90">
                     Register Visit
                   </Button>

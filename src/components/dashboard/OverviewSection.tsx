@@ -128,10 +128,12 @@ const OverviewSection = () => {
               <ul className="space-y-2">
                 {todayBirthdays.map((client) => (
                   <li key={client.id} className="text-sm border-b pb-1">
-                    <div className="font-medium">{client.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {client.phone || client.email || "Sem contato"}
-                    </div>
+                    <a href="/dashboard?tab=clients">
+                      <div className="font-medium">{client.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {client.phone || client.email || "Sem contato"}
+                      </div>
+                    </a>
                   </li>
                 ))}
               </ul>
