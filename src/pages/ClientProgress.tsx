@@ -18,11 +18,12 @@ interface Reward {
   value: number;
 }
 
-interface ClientReward {
+// Updated interface to match the Supabase response structure
+interface ClientRewardResponse {
   id: string;
   points: number | null;
   visits: number | null;
-  program: {
+  loyalty_programs: {
     name: string;
     reward: string;
   } | null;
@@ -108,28 +109,28 @@ const ClientProgress = () => {
       let totalPoints = 0;
       let totalVisits = visitsData?.length || 0;
       
-      rewardsData?.forEach((reward: any) => {
-        if (reward.points) totalPoints += reward.points;
-      });
-      
       // Transformar dados de recompensas
       const availableRewards: Reward[] = [];
       const claimedRewards: Reward[] = [];
       
       // Transformar recompensas do banco de dados para o formato esperado
-      rewardsData?.forEach((reward: ClientReward) => {
-        if (reward.loyalty_programs) {
-          const rewardObj: Reward = {
-            id: reward.id,
-            name: reward.loyalty_programs.reward,
-            claimed: false, // Assumimos que não há informação sobre reivindicação ainda
-            expiresAt: null, // Não temos data de expiração no banco por enquanto
-            value: (reward.points || 0) * 0.5, // Estimativa aproximada de valor
-          };
+      if (rewardsData) {
+        rewardsData.forEach((reward: ClientRewardResponse) => {
+          if (reward.points) totalPoints += reward.points;
           
-          availableRewards.push(rewardObj);
-        }
-      });
+          if (reward.loyalty_programs) {
+            const rewardObj: Reward = {
+              id: reward.id,
+              name: reward.loyalty_programs.reward,
+              claimed: false, // Assumimos que não há informação sobre reivindicação ainda
+              expiresAt: null, // Não temos data de expiração no banco por enquanto
+              value: (reward.points || 0) * 0.5, // Estimativa aproximada de valor
+            };
+            
+            availableRewards.push(rewardObj);
+          }
+        });
+      }
       
       const clientInfo: ClientData = {
         id: clientData.id,
@@ -167,11 +168,7 @@ const ClientProgress = () => {
       )
     });
 
-    toast({
-      title: "Recompensa solicitada!",
-      description: "Um email foi enviado para confirmar seu agendamento.",
-      duration: 3000,
-    });
+    toast.success("Recompensa solicitada! Um email foi enviado para confirmar seu agendamento.");
   };
 
   if (loading) {
