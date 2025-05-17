@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, User, Link as LinkIcon, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,99 +14,127 @@ import { useMediaQuery } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Tables } from "@/integrations/supabase/types";
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  firstVisit: Date;
-  visits: number;
-  points: number;
-  cashback: number;
-  rewards: string[];
-}
-
-const mockClients: Client[] = [
-  {
-    id: "1",
-    name: "Emma Johnson",
-    email: "emma@example.com",
-    phone: "(555) 123-4567",
-    firstVisit: new Date(2023, 5, 15),
-    visits: 8,
-    points: 24,
-    cashback: 45.5,
-    rewards: ["Free Facial", "30% Off"]
-  },
-  {
-    id: "2",
-    name: "Sophia Martinez",
-    email: "sophia@example.com",
-    phone: "(555) 987-6543",
-    firstVisit: new Date(2023, 7, 3),
-    visits: 5,
-    points: 15,
-    cashback: 27.8,
-    rewards: ["Free Manicure"]
-  },
-  {
-    id: "3",
-    name: "Daniel Wilson",
-    email: "daniel@example.com",
-    phone: "(555) 234-5678",
-    firstVisit: new Date(2023, 8, 21),
-    visits: 3,
-    points: 9,
-    cashback: 18.5,
-    rewards: []
-  },
-];
+type Client = Tables<"clients"> & {
+  client_visits?: {
+    count: number;
+  }[];
+  client_rewards?: {
+    points: number;
+    cashback?: number;
+    rewards?: string[];
+  }[];
+};
 
 const ClientsSection = () => {
-  const [clients, setClients] = useState<Client[]>(mockClients);
+  const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [openClientDrawer, setOpenClientDrawer] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const form = useForm({
     defaultValues: {
       name: "",
       email: "",
       phone: "",
-      firstVisit: new Date(),
     },
   });
+
+  const fetchClients = async () => {
+    try {
+      setLoading(true);
+      
+      if (!user) return;
+      
+      // Fetch clients with their visit count
+      const { data, error } = await supabase
+        .from('clients')
+        .select(`
+          *,
+          client_visits(count),
+          client_rewards(points, visits)
+        `)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error fetching clients:", error);
+        setError(error.message);
+        toast({
+          title: "Erro ao carregar clientes",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setClients(data || []);
+      setError(null);
+    } catch (error: any) {
+      console.error("Error in fetchClients:", error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, [user]);
 
   const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddClient = (data: any) => {
-    const newClient = {
-      id: (clients.length + 1).toString(),
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      firstVisit: data.firstVisit,
-      visits: 0,
-      points: 0,
-      cashback: 0,
-      rewards: []
-    };
-    
-    setClients([...clients, newClient]);
-    setOpenDialog(false);
-    form.reset();
-    
-    toast({
-      title: "Cliente adicionado",
-      description: `${data.name} foi adicionado com sucesso.`,
-    });
+  const handleAddClient = async (data: any) => {
+    try {
+      if (!user) return;
+
+      const newClient = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        user_id: user.id,
+      };
+      
+      const { data: insertedClient, error } = await supabase
+        .from('clients')
+        .insert([newClient])
+        .select()
+        .single();
+
+      if (error) {
+        toast({
+          title: "Erro ao adicionar cliente",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setClients([...clients, insertedClient as Client]);
+      setOpenDialog(false);
+      form.reset();
+      
+      toast({
+        title: "Cliente adicionado",
+        description: `${data.name} foi adicionado com sucesso.`,
+      });
+    } catch (error: any) {
+      console.error("Error adding client:", error);
+      toast({
+        title: "Erro ao adicionar cliente",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleClientClick = (client: Client) => {
@@ -121,24 +149,46 @@ const ClientsSection = () => {
   const copyClientLink = (clientId: string) => {
     const link = getClientLink(clientId);
     navigator.clipboard.writeText(link);
-    setLinkCopied(true);
     
     toast({
       title: "Link copiado!",
       description: "O link para o cliente foi copiado para a área de transferência.",
     });
-    
-    setTimeout(() => setLinkCopied(false), 3000);
   };
 
   const sendClientLinkByEmail = (client: Client) => {
-    // Esta função seria implementada com uma chamada de API quando o Supabase estiver conectado
-    // Por enquanto, apenas mostramos uma mensagem de sucesso
+    // This would be implemented with a real email sending service
     toast({
       title: "Link enviado!",
       description: `Um email com o link foi enviado para ${client.email}.`,
     });
   };
+
+  // Function to calculate total points for a client
+  const getClientPoints = (client: Client) => {
+    if (!client.client_rewards || client.client_rewards.length === 0) return 0;
+    
+    return client.client_rewards.reduce((total, reward) => {
+      return total + (reward.points || 0);
+    }, 0);
+  };
+
+  // Function to get visit count for a client
+  const getClientVisits = (client: Client) => {
+    if (!client.client_visits || client.client_visits.length === 0) return 0;
+    return client.client_visits[0]?.count || 0;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando clientes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -230,7 +280,7 @@ const ClientsSection = () => {
                 <TableHead>Nome</TableHead>
                 <TableHead className="hidden md:table-cell">Email</TableHead>
                 <TableHead className="hidden md:table-cell">Telefone</TableHead>
-                <TableHead className="hidden md:table-cell">Primeira Visita</TableHead>
+                <TableHead className="hidden md:table-cell">Data Cadastro</TableHead>
                 <TableHead>Visitas</TableHead>
                 <TableHead>Pontos</TableHead>
                 <TableHead className="w-[80px]">Link</TableHead>
@@ -243,18 +293,25 @@ const ClientsSection = () => {
                   className="cursor-pointer hover:bg-muted/50"
                 >
                   <TableCell onClick={() => handleClientClick(client)}>{client.name}</TableCell>
-                  <TableCell className="hidden md:table-cell" onClick={() => handleClientClick(client)}>{client.email}</TableCell>
-                  <TableCell className="hidden md:table-cell" onClick={() => handleClientClick(client)}>{client.phone}</TableCell>
                   <TableCell className="hidden md:table-cell" onClick={() => handleClientClick(client)}>
-                    {format(client.firstVisit, "dd/MM/yyyy")}
+                    {client.email || "-"}
                   </TableCell>
-                  <TableCell onClick={() => handleClientClick(client)}>{client.visits}</TableCell>
-                  <TableCell onClick={() => handleClientClick(client)}>{client.points}</TableCell>
+                  <TableCell className="hidden md:table-cell" onClick={() => handleClientClick(client)}>
+                    {client.phone || "-"}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell" onClick={() => handleClientClick(client)}>
+                    {client.created_at ? format(new Date(client.created_at), "dd/MM/yyyy") : "-"}
+                  </TableCell>
+                  <TableCell onClick={() => handleClientClick(client)}>{getClientVisits(client)}</TableCell>
+                  <TableCell onClick={() => handleClientClick(client)}>{getClientPoints(client)}</TableCell>
                   <TableCell className="text-center">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => copyClientLink(client.id)}>
+                          <Button variant="ghost" size="icon" onClick={(e) => {
+                            e.stopPropagation();
+                            copyClientLink(client.id);
+                          }}>
                             <LinkIcon className="h-4 w-4 text-blue-500" />
                           </Button>
                         </TooltipTrigger>
@@ -271,7 +328,13 @@ const ClientsSection = () => {
                   <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <User className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-muted-foreground">Nenhum cliente encontrado</p>
+                      <p className="text-muted-foreground">
+                        {error 
+                          ? "Erro ao carregar clientes" 
+                          : loading 
+                            ? "Carregando..." 
+                            : "Nenhum cliente encontrado"}
+                      </p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -302,15 +365,15 @@ const ClientsSection = () => {
                       </div>
                       <div className="flex justify-between">
                         <dt className="font-medium">Email:</dt>
-                        <dd>{selectedClient.email}</dd>
+                        <dd>{selectedClient.email || "-"}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt className="font-medium">Telefone:</dt>
-                        <dd>{selectedClient.phone}</dd>
+                        <dd>{selectedClient.phone || "-"}</dd>
                       </div>
                       <div className="flex justify-between">
-                        <dt className="font-medium">Primeira Visita:</dt>
-                        <dd>{format(selectedClient.firstVisit, "dd/MM/yyyy")}</dd>
+                        <dt className="font-medium">Data de Cadastro:</dt>
+                        <dd>{selectedClient.created_at ? format(new Date(selectedClient.created_at), "dd/MM/yyyy") : "-"}</dd>
                       </div>
                       <div className="mt-4 pt-4 border-t">
                         <p className="text-sm text-gray-500 mb-2">Link de progresso do cliente:</p>
@@ -331,6 +394,7 @@ const ClientsSection = () => {
                           size="sm" 
                           className="w-full mt-2"
                           onClick={() => sendClientLinkByEmail(selectedClient)}
+                          disabled={!selectedClient.email}
                         >
                           <LinkIcon className="h-4 w-4 mr-2" /> Enviar Link por Email
                         </Button>
@@ -347,15 +411,15 @@ const ClientsSection = () => {
                     <dl className="space-y-2">
                       <div className="flex justify-between">
                         <dt className="font-medium">Total de Visitas:</dt>
-                        <dd>{selectedClient.visits}</dd>
+                        <dd>{getClientVisits(selectedClient)}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt className="font-medium">Pontos Acumulados:</dt>
-                        <dd>{selectedClient.points}</dd>
+                        <dd>{getClientPoints(selectedClient)}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt className="font-medium">Cashback Disponível:</dt>
-                        <dd>R$ {selectedClient.cashback.toFixed(2)}</dd>
+                        <dd>R$ {(selectedClient.client_rewards?.[0]?.cashback || 0).toFixed(2)}</dd>
                       </div>
                     </dl>
                   </CardContent>
@@ -364,22 +428,13 @@ const ClientsSection = () => {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base text-muted-foreground">Recompensas</CardTitle>
+                  <CardTitle className="text-base text-muted-foreground">Observações</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {selectedClient.rewards.length > 0 ? (
-                    <ul className="space-y-2">
-                      {selectedClient.rewards.map((reward, index) => (
-                        <li key={index} className="flex items-center justify-between border-b pb-2">
-                          <span>{reward}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {format(new Date(2023, 8, 15 + index * 5), "dd/MM/yyyy")}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                  {selectedClient.notes ? (
+                    <p>{selectedClient.notes}</p>
                   ) : (
-                    <p className="text-muted-foreground text-center py-4">Nenhuma recompensa ainda</p>
+                    <p className="text-muted-foreground text-center py-4">Sem observações</p>
                   )}
                 </CardContent>
               </Card>
