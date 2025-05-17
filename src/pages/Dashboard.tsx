@@ -13,6 +13,7 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { Sidebar, SidebarContent, SidebarProvider } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
 
 const Dashboard = () => {
   const location = useLocation();
@@ -33,6 +34,11 @@ const Dashboard = () => {
     setCurrentTab(tab);
     navigate(`/dashboard?tab=${tab}`, { replace: true });
   };
+
+  // Redirecionar para login se não estiver autenticado
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <SidebarProvider>
